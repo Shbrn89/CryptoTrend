@@ -48,7 +48,7 @@ def show_metric_card(title, value, note=""):
 
 
 def show_prediction_box(label, confidence, explanation):
-    if label.startswith("Bullish"):
+    if label == "Bullish":
         box_class = "bullish-box"
         color = "#22c55e"
     else:
@@ -59,21 +59,12 @@ def show_prediction_box(label, confidence, explanation):
         f"""
         <div class="{box_class}">
             <div class="prediction-title" style="color:{color};">{label}</div>
-            <div class="prediction-confidence">{confidence:.2f}% Confidence Score</div>
+            <div class="prediction-confidence">{confidence:.2f}% Probability</div>
             <div class="prediction-explain">{explanation}</div>
         </div>
         """,
         unsafe_allow_html=True
     )
-
-
-def get_confidence_status(confidence):
-    if confidence >= 75:
-        return "Strong"
-    elif confidence >= 60:
-        return "Moderate"
-    else:
-        return "Weak"
 
 
 load_css("style.css")
@@ -312,6 +303,7 @@ with prediction_tab:
             <div class="section-desc">
                 Masukkan data pasar terbaru Bitcoin. Sistem akan menggabungkan input ini dengan data historis,
                 menghitung indikator teknikal terbaru, lalu Random Forest memprediksi hasil Bullish atau Bearish.
+                Persentase yang ditampilkan berasal dari probability Random Forest.
             </div>
         </div>
         """,
@@ -374,11 +366,7 @@ with prediction_tab:
             confidence,
             user_latest_row,
             bullish_probability,
-            bearish_probability,
-            bullish_signal,
-            bearish_signal,
-            raw_model_probability,
-            technical_confirmation
+            bearish_probability
         ) = predict_manual_ohlcv_input(
             historical_df=clean_df,
             user_open=user_open,
@@ -393,38 +381,30 @@ with prediction_tab:
 
         user_rsi_condition, user_macd_condition, user_trend_condition = get_market_condition(user_latest_row)
 
-        confidence_status = get_confidence_status(confidence)
-        display_label = f"{prediction_label} - {confidence_status}"
-
         if prediction_label == "Bullish":
             explanation = (
-                "Model Random Forest memprediksi Bullish. Confidence Score dihitung dari kombinasi "
-                "raw probability Random Forest dan konfirmasi teknikal dari input OHLCV seperti posisi Close terhadap High-Low, "
-                "perubahan harga, volume, RSI, MACD, dan Moving Average."
+                "Model Random Forest memprediksi Bullish berdasarkan pola OHLCV dan indikator teknikal "
+                "yang dipelajari dari dataset historis. Persentase diambil langsung dari probability model Random Forest."
             )
         else:
             explanation = (
-                "Model Random Forest memprediksi Bearish. Confidence Score dihitung dari kombinasi "
-                "raw probability Random Forest dan konfirmasi teknikal dari input OHLCV seperti posisi Close terhadap High-Low, "
-                "perubahan harga, volume, RSI, MACD, dan Moving Average."
+                "Model Random Forest memprediksi Bearish berdasarkan pola OHLCV dan indikator teknikal "
+                "yang dipelajari dari dataset historis. Persentase diambil langsung dari probability model Random Forest."
             )
 
         show_prediction_box(
-            label=display_label,
+            label=prediction_label,
             confidence=confidence,
             explanation=explanation
         )
 
-        prob_col1, prob_col2, prob_col3 = st.columns(3)
+        prob_col1, prob_col2 = st.columns(2)
 
         with prob_col1:
-            st.metric("Raw Bullish Probability", f"{bullish_probability:.2f}%")
+            st.metric("Bullish Probability", f"{bullish_probability:.2f}%")
 
         with prob_col2:
-            st.metric("Raw Bearish Probability", f"{bearish_probability:.2f}%")
-
-        with prob_col3:
-            st.metric("Technical Confirmation", f"{technical_confirmation:.2f}%")
+            st.metric("Bearish Probability", f"{bearish_probability:.2f}%")
 
         result_col1, result_col2, result_col3 = st.columns(3)
 
