@@ -145,107 +145,6 @@ def train_and_evaluate_models(model_df, feature_columns):
     )
 
 
-def normalize_score(value, min_value, max_value):
-    if max_value == min_value:
-        return 0
-
-    score = (value - min_value) / (max_value - min_value)
-    score = max(0, min(1, score))
-
-    return score
-
-
-def calculate_technical_signal_score(latest_row, historical_df):
-    user_open = latest_row["Open"]
-    user_high = latest_row["High"]
-    user_low = latest_row["Low"]
-    user_close = latest_row["Close"]
-    user_volume = latest_row["Volume"]
-
-    previous_close = historical_df["Close"].iloc[-1]
-
-    price_range = max(user_high - user_low, 1e-9)
-    candle_body_pct = (user_close - user_open) / max(user_open, 1e-9)
-    close_position = (user_close - user_low) / price_range
-
-    return_pct = (user_close - previous_close) / max(previous_close, 1e-9)
-
-    recent_volume_median = historical_df["Volume"].tail(30).median()
-    volume_ratio = user_volume / max(recent_volume_median, 1e-9)
-
-    body_score = normalize_score(candle_body_pct, -0.08, 0.18)
-    close_position_score = normalize_score(close_position, 0.25, 0.95)
-    return_score = normalize_score(return_pct, -0.05, 0.18)
-    volume_score = normalize_score(volume_ratio, 0.5, 2.5)
-
-    ma5 = latest_row["MA5"]
-    ma10 = latest_row["MA10"]
-    ma20 = latest_row["MA20"]
-
-    if ma5 > ma10 and ma10 > ma20:
-        ma_score = 0.90
-    elif ma5 > ma20:
-        ma_score = 0.70
-    else:
-        ma_score = 0.35
-
-    macd = latest_row["MACD"]
-    macd_signal = latest_row["MACD_Signal"]
-
-    if macd > macd_signal:
-        macd_score = 0.80
-    else:
-        macd_score = 0.30
-
-    rsi = latest_row["RSI"]
-
-    if rsi < 30:
-        rsi_score = 0.65
-    elif 30 <= rsi <= 70:
-        rsi_score = 0.80
-    else:
-        rsi_score = 0.55
-
-    bullish_signal = (
-        0.24 * body_score +
-        0.24 * close_position_score +
-        0.16 * return_score +
-        0.14 * volume_score +
-        0.08 * ma_score +
-        0.07 * macd_score +
-        0.07 * rsi_score
-    ) * 100
-
-    bullish_signal = max(0, min(100, bullish_signal))
-    bearish_signal = 100 - bullish_signal
-
-    return bullish_signal, bearish_signal
-
-
-def calculate_adjusted_confidence(
-    prediction,
-    bullish_probability,
-    bearish_probability,
-    bullish_signal,
-    bearish_signal
-):
-    if prediction == 1:
-        raw_model_probability = bullish_probability
-        technical_confirmation = bullish_signal
-    else:
-        raw_model_probability = bearish_probability
-        technical_confirmation = bearish_signal
-
-    adjusted_confidence = (
-        0.40 * raw_model_probability +
-        0.60 * technical_confirmation
-    )
-
-    adjusted_confidence = max(50, min(95, adjusted_confidence))
-
-    return adjusted_confidence, raw_model_probability, technical_confirmation
-
-
 def predict_manual_ohlcv_input(
     historical_df,
     user_open,
@@ -288,22 +187,15 @@ def predict_manual_ohlcv_input(
 
         bearish_probability = probabilities[bearish_index] * 100
         bullish_probability = probabilities[bullish_index] * 100
+
+        if prediction == 1:
+            confidence = bullish_probability
+        else:
+            confidence = bearish_probability
     else:
         bearish_probability = 0
         bullish_probability = 0
-
-    bullish_signal, bearish_signal = calculate_technical_signal_score(
-        latest_row=latest_row,
-        historical_df=historical_df
-    )
-
-    confidence, raw_model_probability, technical_confirmation = calculate_adjusted_confidence(
-        prediction=prediction,
-        bullish_probability=bullish_probability,
-        bearish_probability=bearish_probability,
-        bullish_signal=bullish_signal,
-        bearish_signal=bearish_signal
-    )
+        confidence = 0
 
     label = "Bullish" if prediction == 1 else "Bearish"
 
@@ -312,9 +204,5 @@ def predict_manual_ohlcv_input(
         confidence,
         latest_row,
         bullish_probability,
-        bearish_probability,
-        bullish_signal,
-        bearish_signal,
-        raw_model_probability,
-        technical_confirmation
+        bearish_probability
     )
