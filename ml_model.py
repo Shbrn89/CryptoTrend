@@ -179,30 +179,9 @@ def predict_manual_ohlcv_input(
 
     prediction = model.predict(latest_features)[0]
 
-    if hasattr(model, "predict_proba"):
-        probabilities = model.predict_proba(latest_features)[0]
-
-        bearish_index = list(model.classes_).index(0)
-        bullish_index = list(model.classes_).index(1)
-
-        bearish_probability = probabilities[bearish_index] * 100
-        bullish_probability = probabilities[bullish_index] * 100
-
-        if prediction == 1:
-            confidence = bullish_probability
-        else:
-            confidence = bearish_probability
+    if prediction == 1:
+        label = "Bullish"
     else:
-        bearish_probability = 0
-        bullish_probability = 0
-        confidence = 0
+        label = "Bearish"
 
-    label = "Bullish" if prediction == 1 else "Bearish"
-
-    return (
-        label,
-        confidence,
-        latest_row,
-        bullish_probability,
-        bearish_probability
-    )
+    return label, latest_row
