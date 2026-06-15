@@ -47,7 +47,7 @@ def show_metric_card(title, value, note=""):
     )
 
 
-def show_prediction_box(label, confidence, explanation):
+def show_prediction_box(label, explanation):
     if label == "Bullish":
         box_class = "bullish-box"
         color = "#22c55e"
@@ -59,7 +59,6 @@ def show_prediction_box(label, confidence, explanation):
         f"""
         <div class="{box_class}">
             <div class="prediction-title" style="color:{color};">{label}</div>
-            <div class="prediction-confidence">{confidence:.2f}% Probability</div>
             <div class="prediction-explain">{explanation}</div>
         </div>
         """,
@@ -303,7 +302,6 @@ with prediction_tab:
             <div class="section-desc">
                 Masukkan data pasar terbaru Bitcoin. Sistem akan menggabungkan input ini dengan data historis,
                 menghitung indikator teknikal terbaru, lalu Random Forest memprediksi hasil Bullish atau Bearish.
-                Persentase yang ditampilkan berasal dari probability Random Forest.
             </div>
         </div>
         """,
@@ -361,13 +359,7 @@ with prediction_tab:
         st.warning("Nilai Low sebaiknya lebih kecil atau sama dengan Open, High, dan Close.")
 
     if predict_button:
-        (
-            prediction_label,
-            confidence,
-            user_latest_row,
-            bullish_probability,
-            bearish_probability
-        ) = predict_manual_ohlcv_input(
+        prediction_label, user_latest_row = predict_manual_ohlcv_input(
             historical_df=clean_df,
             user_open=user_open,
             user_high=user_high,
@@ -383,28 +375,19 @@ with prediction_tab:
 
         if prediction_label == "Bullish":
             explanation = (
-                "Model Random Forest memprediksi Bullish berdasarkan pola OHLCV dan indikator teknikal "
-                "yang dipelajari dari dataset historis. Persentase diambil langsung dari probability model Random Forest."
+                "Model Random Forest memprediksi tren Bullish berdasarkan pola OHLCV dan indikator teknikal "
+                "yang dipelajari dari dataset historis."
             )
         else:
             explanation = (
-                "Model Random Forest memprediksi Bearish berdasarkan pola OHLCV dan indikator teknikal "
-                "yang dipelajari dari dataset historis. Persentase diambil langsung dari probability model Random Forest."
+                "Model Random Forest memprediksi tren Bearish berdasarkan pola OHLCV dan indikator teknikal "
+                "yang dipelajari dari dataset historis."
             )
 
         show_prediction_box(
             label=prediction_label,
-            confidence=confidence,
             explanation=explanation
         )
-
-        prob_col1, prob_col2 = st.columns(2)
-
-        with prob_col1:
-            st.metric("Bullish Probability", f"{bullish_probability:.2f}%")
-
-        with prob_col2:
-            st.metric("Bearish Probability", f"{bearish_probability:.2f}%")
 
         result_col1, result_col2, result_col3 = st.columns(3)
 
